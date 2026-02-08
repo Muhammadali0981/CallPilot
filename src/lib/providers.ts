@@ -31,10 +31,8 @@ export function getProvidersByCategory(category: string, location?: string): Pro
       p.zip.includes(loc) ||
       p.address.toLowerCase().includes(loc)
     );
-    // If location matches some providers, use those; otherwise fall back to all in category
-    if (locationMatched.length > 0) {
-      filtered = locationMatched;
-    }
+    // Only return providers that match the location — no fallback
+    filtered = locationMatched;
   }
   return filtered;
 }
