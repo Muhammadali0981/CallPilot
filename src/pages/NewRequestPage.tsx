@@ -170,6 +170,10 @@ export default function NewRequestPage({ isGoogleUser }: NewRequestPageProps) {
       toast.error('Please describe what you need');
       return;
     }
+    if (selectedDates.length === 0) {
+      toast.error('Please select at least one available date');
+      return;
+    }
 
     // Build base availability from selected dates
     const baseSlots: TimeSlot[] = selectedDates.map(d => {
@@ -181,8 +185,11 @@ export default function NewRequestPage({ isGoogleUser }: NewRequestPageProps) {
     });
 
     console.log('[handleLaunch] calendarEvents from store:', calendarEvents.length, JSON.stringify(calendarEvents));
-    // Subtract Google Calendar busy times from availability
     const userAvailability = subtractBusyTimes(baseSlots, calendarEvents);
+
+    if (userAvailability.length === 0 && calendarEvents.length > 0) {
+      toast.warning('All selected dates are fully booked according to your calendar. The agent will inform providers you have no free time.');
+    }
 
     const request: BookingRequest = {
       id: crypto.randomUUID(),
