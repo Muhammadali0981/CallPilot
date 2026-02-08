@@ -180,6 +180,7 @@ export default function NewRequestPage({ isGoogleUser }: NewRequestPageProps) {
       return { day, start: '08:00', end: '18:00' };
     });
 
+    console.log('[handleLaunch] calendarEvents from store:', calendarEvents.length, JSON.stringify(calendarEvents));
     // Subtract Google Calendar busy times from availability
     const userAvailability = subtractBusyTimes(baseSlots, calendarEvents);
 
