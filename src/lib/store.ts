@@ -1,7 +1,8 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { BookingRequest, Booking, ProviderCall, Language, AppPage, TranscriptEntry, ScoredResult, Category } from './types';
 
-interface CalendarEvent {
+export interface CalendarEvent {
   id: string;
   summary: string;
   start: string;
@@ -22,7 +23,7 @@ interface AppState {
   currentRequest: BookingRequest | null;
   setCurrentRequest: (req: BookingRequest | null) => void;
 
-  // Calendar events (persisted across page changes)
+  // Calendar events (persisted across page changes AND refreshes)
   calendarEvents: CalendarEvent[];
   setCalendarEvents: (events: CalendarEvent[]) => void;
 
@@ -43,42 +44,57 @@ interface AppState {
   addBooking: (booking: Booking) => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  currentPage: 'dashboard',
-  setPage: (page) => set({ currentPage: page }),
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      currentPage: 'dashboard',
+      setPage: (page) => set({ currentPage: page }),
 
-  language: 'en',
-  setLanguage: (language) => set({ language }),
+      language: 'en',
+      setLanguage: (language) => set({ language }),
 
-  currentRequest: null,
-  setCurrentRequest: (currentRequest) => set({ currentRequest, missionStarted: false, calls: [] }),
+      currentRequest: null,
+      setCurrentRequest: (currentRequest) => set({ currentRequest, missionStarted: false, calls: [] }),
 
-  calendarEvents: [],
-  setCalendarEvents: (calendarEvents) => set({ calendarEvents }),
+      calendarEvents: [],
+      setCalendarEvents: (calendarEvents) => {
+        console.log('[store] Setting calendarEvents:', calendarEvents.length, 'events');
+        set({ calendarEvents });
+      },
 
-  calls: [],
-  missionStarted: false,
-  setCalls: (calls) => set({ calls }),
-  setMissionStarted: (missionStarted) => set({ missionStarted }),
-  updateCall: (providerId, update) =>
-    set((state) => ({
-      calls: state.calls.map((c) =>
-        c.provider.id === providerId ? { ...c, ...update } : c
-      ),
-    })),
-  addTranscript: (providerId, entry) =>
-    set((state) => ({
-      calls: state.calls.map((c) =>
-        c.provider.id === providerId
-          ? { ...c, transcript: [...c.transcript, entry] }
-          : c
-      ),
-    })),
+      calls: [],
+      missionStarted: false,
+      setCalls: (calls) => set({ calls }),
+      setMissionStarted: (missionStarted) => set({ missionStarted }),
+      updateCall: (providerId, update) =>
+        set((state) => ({
+          calls: state.calls.map((c) =>
+            c.provider.id === providerId ? { ...c, ...update } : c
+          ),
+        })),
+      addTranscript: (providerId, entry) =>
+        set((state) => ({
+          calls: state.calls.map((c) =>
+            c.provider.id === providerId
+              ? { ...c, transcript: [...c.transcript, entry] }
+              : c
+          ),
+        })),
 
-  results: [],
-  setResults: (results) => set({ results }),
+      results: [],
+      setResults: (results) => set({ results }),
 
-  bookings: [],
-  addBooking: (booking) =>
-    set((state) => ({ bookings: [booking, ...state.bookings] })),
-}));
+      bookings: [],
+      addBooking: (booking) =>
+        set((state) => ({ bookings: [booking, ...state.bookings] })),
+    }),
+    {
+      name: 'callpilot-store',
+      // Only persist calendarEvents and language — not navigation or transient state
+      partialize: (state) => ({
+        calendarEvents: state.calendarEvents,
+        language: state.language,
+      }),
+    }
+  )
+);
