@@ -1,5 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -14,19 +12,28 @@ Deno.serve(async (req) => {
   try {
     const { googleAccessToken, timeMin, timeMax } = await req.json();
 
-    if (!googleAccessToken) {
-      return new Response(
-        JSON.stringify({ error: "Missing Google access token" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     // Default: fetch events for the next 30 days
     const now = new Date();
     const defaultMin = timeMin || now.toISOString();
     const defaultMax = timeMax || new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    const calendarUrl = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+    let calendarUrl: URL;
+    let headers: Record<string, string>;
+
+    if (googleAccessToken) {
+      // Direct Google API call with user's access token
+      calendarUrl = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+      headers = { Authorization: `Bearer ${googleAccessToken}` };
+      console.log("[google-calendar] Using direct Google API with access token");
+    } else {
+      // Fallback: use Lovable gateway (handles auth automatically)
+      calendarUrl = new URL("https://gateway.lovable.dev/google_calendar/calendar/v3/calendars/primary/events");
+      // Forward the authorization header from the request
+      const authHeader = req.headers.get("authorization") || "";
+      headers = { Authorization: authHeader };
+      console.log("[google-calendar] Using Lovable gateway");
+    }
+
     calendarUrl.searchParams.set("timeMin", defaultMin);
     calendarUrl.searchParams.set("timeMax", defaultMax);
     calendarUrl.searchParams.set("singleEvents", "true");
@@ -35,15 +42,11 @@ Deno.serve(async (req) => {
 
     console.log(`[google-calendar] Fetching events from ${defaultMin} to ${defaultMax}`);
 
-    const response = await fetch(calendarUrl.toString(), {
-      headers: {
-        Authorization: `Bearer ${googleAccessToken}`,
-      },
-    });
+    const response = await fetch(calendarUrl.toString(), { headers });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[google-calendar] Google API error:", response.status, errorText);
+      console.error("[google-calendar] API error:", response.status, errorText);
       return new Response(
         JSON.stringify({
           error: "Failed to fetch calendar events",
