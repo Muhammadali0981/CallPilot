@@ -9,10 +9,10 @@ export const staticProviders: Provider[] = [
   { id: 'home-1', name: 'ProFix Plumbing', category: 'home', address: '500 Howard St', city: 'San Francisco', zip: '94105', phone: '(415) 555-0401', rating: 4.5, distance: 3.5, availableSlots: [{ day: '2026-02-10', start: '08:00', end: '10:00' }] },
 ];
 
-export async function searchProviders(category: string, location: string): Promise<Provider[]> {
+export async function searchProviders(category: string, location: string, lat?: number, lon?: number): Promise<Provider[]> {
   try {
     const { data, error } = await supabase.functions.invoke('search-providers', {
-      body: { category, location },
+      body: { category, location, lat, lon },
     });
 
     if (error) {

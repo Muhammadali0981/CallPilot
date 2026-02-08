@@ -42,6 +42,8 @@ export interface BookingRequest {
   description: string;
   category: Category;
   location: string;
+  lat?: number;
+  lon?: number;
   userAvailability: TimeSlot[];
   weights: { availability: number; rating: number; distance: number };
   language: Language;

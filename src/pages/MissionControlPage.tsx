@@ -41,7 +41,7 @@ export default function MissionControlPage() {
     let cancelled = false;
 
     (async () => {
-      const providers = await searchProviders(currentRequest.category, currentRequest.location);
+      const providers = await searchProviders(currentRequest.category, currentRequest.location, currentRequest.lat, currentRequest.lon);
       if (cancelled) return;
       if (providers.length === 0) {
         toast.error('No providers found for this category and location');

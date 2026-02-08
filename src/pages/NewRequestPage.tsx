@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
 import { Category, BookingRequest, TimeSlot } from '@/lib/types';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
-import { Rocket, Stethoscope, Car, Scissors, Home, Dumbbell, Scale } from 'lucide-react';
+import { Rocket, Stethoscope, Car, Scissors, Home, Dumbbell, Scale, MapPin, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -26,9 +26,54 @@ export default function NewRequestPage() {
   const { language, setPage, setCurrentRequest } = useAppStore();
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<Category>('medical');
-  const [location, setLocation] = useState('San Francisco');
+  const [location, setLocation] = useState('');
+  const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [weights, setWeights] = useState({ availability: 50, rating: 30, distance: 20 });
+
+  // Request geolocation on mount
+  useEffect(() => {
+    requestLocation();
+  }, []);
+
+  const requestLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserCoords({ lat: latitude, lon: longitude });
+        // Reverse geocode to get city name
+        try {
+          const res = await fetch(
+            `https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&apiKey=88c2c67b83aa4eb89b05d539a4090390`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const props = data.features?.[0]?.properties;
+            if (props) {
+              setLocation(props.city || props.town || props.county || 'Your Location');
+            }
+          }
+        } catch {
+          setLocation('Your Location');
+        }
+        setIsLocating(false);
+        toast.success('Location detected!');
+      },
+      (error) => {
+        console.warn('Geolocation error:', error.message);
+        setIsLocating(false);
+        setLocation('San Francisco');
+        toast.info('Could not detect location. Please enter it manually.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   const handleLaunch = () => {
     if (!description.trim()) {
@@ -45,6 +90,8 @@ export default function NewRequestPage() {
       description,
       category,
       location,
+      lat: userCoords?.lat,
+      lon: userCoords?.lon,
       userAvailability,
       weights,
       language,
@@ -107,12 +154,33 @@ export default function NewRequestPage() {
             <CardHeader>
               <CardTitle className="text-lg">{t('request.location', language)}</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Input
-                placeholder={t('request.locationPlaceholder', language)}
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
+            <CardContent className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  placeholder={t('request.locationPlaceholder', language)}
+                  value={location}
+                  onChange={(e) => {
+                    setLocation(e.target.value);
+                    setUserCoords(null); // clear coords if manually typed
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={requestLocation}
+                  disabled={isLocating}
+                  title="Detect my location"
+                >
+                  {isLocating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                </Button>
+              </div>
+              {userCoords && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  Using GPS coordinates ({userCoords.lat.toFixed(4)}, {userCoords.lon.toFixed(4)})
+                </p>
+              )}
             </CardContent>
           </Card>
 
