@@ -23,6 +23,70 @@ const categories: { value: Category; icon: React.ReactNode; key: string }[] = [
   { value: 'legal', icon: <Scale className="h-5 w-5" />, key: 'category.legal' },
 ];
 
+/**
+ * Subtract Google Calendar busy events from base availability slots.
+ * Returns refined TimeSlots with busy periods carved out.
+ */
+function subtractBusyTimes(baseSlots: TimeSlot[], events: any[]): TimeSlot[] {
+  if (!events || events.length === 0) return baseSlots;
+
+  const result: TimeSlot[] = [];
+
+  for (const slot of baseSlots) {
+    // Find events that overlap with this day
+    const dayEvents = events.filter(evt => {
+      if (evt.allDay) {
+        // All-day event on this date blocks the whole day
+        const evtDate = evt.start?.split('T')[0] || evt.start;
+        return evtDate === slot.day;
+      }
+      const evtStart = new Date(evt.start);
+      const evtDay = `${evtStart.getFullYear()}-${String(evtStart.getMonth() + 1).padStart(2, '0')}-${String(evtStart.getDate()).padStart(2, '0')}`;
+      return evtDay === slot.day;
+    });
+
+    if (dayEvents.length === 0) {
+      result.push(slot);
+      continue;
+    }
+
+    // If any all-day event, skip entire day
+    if (dayEvents.some(e => e.allDay)) continue;
+
+    // Convert busy periods to minutes and carve out free windows
+    const toMin = (t: string) => {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+    const toTime = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+    const busyRanges = dayEvents.map(evt => {
+      const s = new Date(evt.start);
+      const e = new Date(evt.end);
+      return {
+        start: s.getHours() * 60 + s.getMinutes(),
+        end: e.getHours() * 60 + e.getMinutes(),
+      };
+    }).sort((a, b) => a.start - b.start);
+
+    let cursor = toMin(slot.start);
+    const slotEnd = toMin(slot.end);
+
+    for (const busy of busyRanges) {
+      if (cursor < busy.start && busy.start <= slotEnd) {
+        result.push({ day: slot.day, start: toTime(cursor), end: toTime(Math.min(busy.start, slotEnd)) });
+      }
+      cursor = Math.max(cursor, busy.end);
+    }
+
+    if (cursor < slotEnd) {
+      result.push({ day: slot.day, start: toTime(cursor), end: toTime(slotEnd) });
+    }
+  }
+
+  return result;
+}
+
 interface NewRequestPageProps {
   providerToken: string | null;
 }
@@ -86,13 +150,18 @@ export default function NewRequestPage({ providerToken }: NewRequestPageProps) {
       toast.error('Please describe what you need');
       return;
     }
-    const userAvailability: TimeSlot[] = selectedDates.map(d => {
+
+    // Build base availability from selected dates
+    const baseSlots: TimeSlot[] = selectedDates.map(d => {
       const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const dayNum = String(d.getDate()).padStart(2, '0');
       const day = `${year}-${month}-${dayNum}`;
       return { day, start: '08:00', end: '18:00' };
     });
+
+    // Subtract Google Calendar busy times from availability
+    const userAvailability = subtractBusyTimes(baseSlots, calendarEvents);
 
     const request: BookingRequest = {
       id: crypto.randomUUID(),
