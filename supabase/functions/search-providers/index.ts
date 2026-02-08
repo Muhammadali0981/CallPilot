@@ -7,12 +7,12 @@ const corsHeaders = {
 
 // Map app categories to Mapbox POI search terms
 const categorySearchTerms: Record<string, string> = {
-  medical: 'doctor clinic hospital medical center',
-  auto: 'auto repair mechanic car service garage',
-  beauty: 'hair salon spa beauty nail',
-  home: 'plumber electrician cleaning handyman',
-  fitness: 'gym fitness yoga pilates crossfit',
-  legal: 'lawyer attorney law firm legal',
+  medical: 'hospital',
+  auto: 'auto repair',
+  beauty: 'salon',
+  home: 'plumber',
+  fitness: 'gym',
+  legal: 'lawyer',
 };
 
 function generateSlots(count: number): { day: string; start: string; end: string }[] {
@@ -23,7 +23,7 @@ function generateSlots(count: number): { day: string; start: string; end: string
     const d = new Date(now);
     d.setDate(d.getDate() + daysAhead);
     const day = d.toISOString().split('T')[0];
-    const hour = 8 + Math.floor(Math.random() * 9); // 8-16
+    const hour = 8 + Math.floor(Math.random() * 9);
     const start = `${String(hour).padStart(2, '0')}:00`;
     const endHour = hour + 1;
     const end = `${String(endHour).padStart(2, '0')}:00`;
@@ -52,12 +52,22 @@ serve(async (req) => {
     }
 
     const searchText = categorySearchTerms[category] || category;
-    const query = `${searchText} ${location}`;
-    const encoded = encodeURIComponent(query);
+    // First geocode the location to get coordinates for proximity bias
+    const locEncoded = encodeURIComponent(location);
+    const geoUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${locEncoded}.json?access_token=${MAPBOX_TOKEN}&limit=1`;
+    const geoRes = await fetch(geoUrl);
+    const geoData = await geoRes.json();
     
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${MAPBOX_TOKEN}&types=poi&limit=10`;
+    let proximity = '';
+    if (geoData.features?.length > 0) {
+      const [lng, lat] = geoData.features[0].center;
+      proximity = `&proximity=${lng},${lat}`;
+    }
+
+    const encoded = encodeURIComponent(searchText);
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${MAPBOX_TOKEN}&limit=10${proximity}`;
     
-    console.log(`Searching Mapbox for: ${query}`);
+    console.log(`Searching Mapbox for: ${searchText} near ${location}`);
 
     const response = await fetch(url);
     if (!response.ok) {
