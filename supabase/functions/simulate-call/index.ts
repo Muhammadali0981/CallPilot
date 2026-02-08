@@ -51,7 +51,9 @@ Generate a realistic phone call transcript as a JSON array of messages. The call
 2. The AI agent introduces itself and explains it's calling on behalf of a client
 3. The agent asks about availability for: ${requestDescription}
 4. The receptionist checks their schedule and responds (80% chance they have availability, 20% they don't)
-5. If available, the receptionist MUST offer 1-2 specific time slots that fall WITHIN the client's available times: ${availabilityStr}. These are the client's FREE slots (busy times already excluded). Always pick times from this list.
+5. If available, the receptionist MUST offer 1-2 specific time slots chosen EXACTLY from this list of the client's FREE windows (these are the ONLY acceptable times — busy periods are already removed):
+   ${availabilityStr}
+   IMPORTANT: You MUST pick start and end times that fall entirely within one of these windows. Do NOT offer times outside these ranges. For example if free window is "2026-02-10 09:00-12:00", you could offer "2026-02-10 09:00-10:00" or "2026-02-10 10:00-11:00" but NEVER "2026-02-10 13:00-14:00".
 6. The agent confirms interest and thanks them
 7. Call ends naturally
 
@@ -103,6 +105,30 @@ Respond with ONLY valid JSON in this format:
     } catch {
       console.error("Failed to parse AI response:", content);
       throw new Error("Failed to parse AI-generated conversation");
+    }
+
+    // Server-side validation: reject offered slots that fall outside user's free windows
+    if (parsed.result?.offeredSlots && userAvailability.length > 0) {
+      const toMin = (t: string) => {
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+      };
+
+      parsed.result.offeredSlots = parsed.result.offeredSlots.filter((slot: TimeSlot) => {
+        const slotStart = toMin(slot.start);
+        const slotEnd = toMin(slot.end);
+        // Slot must fall entirely within at least one free window
+        return userAvailability.some((free: TimeSlot) =>
+          free.day === slot.day && toMin(free.start) <= slotStart && slotEnd <= toMin(free.end)
+        );
+      });
+
+      // Update hasAvailability based on validated slots
+      parsed.result.hasAvailability = parsed.result.offeredSlots.length > 0;
+      
+      if (!parsed.result.hasAvailability) {
+        console.log("[simulate-call] All offered slots were outside user availability — rejected");
+      }
     }
 
     return new Response(JSON.stringify(parsed), {
