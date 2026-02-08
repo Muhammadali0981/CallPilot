@@ -47,7 +47,10 @@ serve(async (req) => {
   }
 
   try {
-    const GEOAPIFY_KEY = '88c2c67b83aa4eb89b05d539a4090390';
+    const GEOAPIFY_KEY = Deno.env.get('GEOAPIFY_KEY');
+    if (!GEOAPIFY_KEY) {
+      throw new Error('GEOAPIFY_KEY is not configured');
+    }
 
     const { category, location, lat, lon } = await req.json();
     if (!category) {
@@ -81,11 +84,11 @@ serve(async (req) => {
     }
 
     const categories = categoryMapping[category] || 'commercial';
-    
+
     // Build a bounding box ~10 miles around the user
     const offset = 0.15; // ~10 miles in degrees
     const filter = `rect:${userLon - offset},${userLat + offset},${userLon + offset},${userLat - offset}`;
-    
+
     const url = `https://api.geoapify.com/v2/places?categories=${categories}&filter=${filter}&limit=15&apiKey=${GEOAPIFY_KEY}`;
     console.log(`Searching Geoapify for: ${categories} near [${userLat}, ${userLon}]`);
 

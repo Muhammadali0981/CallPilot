@@ -140,7 +140,7 @@ export default function NewRequestPage({ isGoogleUser }: NewRequestPageProps) {
         // Reverse geocode to get city name
         try {
           const res = await fetch(
-            `https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&apiKey=88c2c67b83aa4eb89b05d539a4090390`
+            `https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&apiKey=${import.meta.env.VITE_GEOAPIFY_KEY}`
           );
           if (res.ok) {
             const data = await res.json();
@@ -241,11 +241,10 @@ export default function NewRequestPage({ isGoogleUser }: NewRequestPageProps) {
                   <button
                     key={value}
                     onClick={() => setCategory(value)}
-                    className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-xs font-medium transition-all ${
-                      category === value
+                    className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-xs font-medium transition-all ${category === value
                         ? 'border-primary bg-primary/10 text-primary'
                         : 'border-transparent bg-secondary/50 text-muted-foreground hover:bg-secondary'
-                    }`}
+                      }`}
                   >
                     {icon}
                     {t(key, language)}
