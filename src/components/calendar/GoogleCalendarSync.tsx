@@ -14,31 +14,67 @@ interface CalendarEvent {
 
 interface GoogleCalendarSyncProps {
   providerToken: string | null;
+  providerRefreshToken: string | null;
   isGoogleUser: boolean;
   onEventsLoaded: (events: CalendarEvent[]) => void;
 }
 
-export function GoogleCalendarSync({ providerToken, isGoogleUser, onEventsLoaded }: GoogleCalendarSyncProps) {
+async function getValidAccessToken(
+  accessToken: string | null,
+  refreshToken: string | null
+): Promise<string | null> {
+  // Try existing access token first via a lightweight call
+  if (accessToken) {
+    const testRes = await fetch(
+      'https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=' + encodeURIComponent(accessToken)
+    );
+    if (testRes.ok) {
+      return accessToken; // Still valid
+    }
+  }
+
+  // Access token expired or missing — try refresh
+  if (!refreshToken) return null;
+
+  console.log('[calendar-sync] Access token expired, refreshing...');
+  const { data, error } = await supabase.functions.invoke('refresh-google-token', {
+    body: { refreshToken },
+  });
+
+  if (error || data?.error || !data?.access_token) {
+    console.error('[calendar-sync] Token refresh failed:', error || data?.error);
+    return null;
+  }
+
+  // Store the fresh token
+  localStorage.setItem('google_access_token', data.access_token);
+  console.log('[calendar-sync] Token refreshed successfully');
+  return data.access_token;
+}
+
+export function GoogleCalendarSync({ providerToken, providerRefreshToken, isGoogleUser, onEventsLoaded }: GoogleCalendarSyncProps) {
   const [loading, setLoading] = useState(false);
   const [synced, setSynced] = useState(false);
   const [eventCount, setEventCount] = useState(0);
 
   const handleSync = async () => {
-    if (!providerToken) {
-      toast.error('Calendar access token expired. Please sign out and sign back in with Google.');
-      return;
-    }
-
     setLoading(true);
     try {
+      const validToken = await getValidAccessToken(providerToken, providerRefreshToken);
+
+      if (!validToken) {
+        toast.error('Calendar access expired. Please sign out and sign back in with Google.');
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('google-calendar-events', {
-        body: { googleAccessToken: providerToken },
+        body: { googleAccessToken: validToken },
       });
 
       if (error || data?.error) {
         console.error('Calendar sync error:', error || data);
         if (data?.status === 401 || data?.status === 403) {
-          toast.error('Calendar access expired. Please sign out and sign in again with Google.');
+          toast.error('Calendar access denied. Please sign out and sign in again with Google.');
           localStorage.removeItem('google_access_token');
         } else {
           toast.error('Failed to fetch calendar events. Make sure you granted calendar access.');
