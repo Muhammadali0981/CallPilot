@@ -14,17 +14,18 @@ interface CalendarEvent {
 
 interface GoogleCalendarSyncProps {
   providerToken: string | null;
+  isGoogleUser: boolean;
   onEventsLoaded: (events: CalendarEvent[]) => void;
 }
 
-export function GoogleCalendarSync({ providerToken, onEventsLoaded }: GoogleCalendarSyncProps) {
+export function GoogleCalendarSync({ providerToken, isGoogleUser, onEventsLoaded }: GoogleCalendarSyncProps) {
   const [loading, setLoading] = useState(false);
   const [synced, setSynced] = useState(false);
   const [eventCount, setEventCount] = useState(0);
 
   const handleSync = async () => {
     if (!providerToken) {
-      toast.error('Please sign in with Google to sync your calendar.');
+      toast.error('Calendar access token expired. Please sign out and sign back in with Google.');
       return;
     }
 
@@ -63,7 +64,7 @@ export function GoogleCalendarSync({ providerToken, onEventsLoaded }: GoogleCale
     }
   };
 
-  if (!providerToken) {
+  if (!isGoogleUser) {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-secondary/30 p-3 text-sm text-muted-foreground">
         <AlertTriangle className="h-4 w-4 shrink-0" />
