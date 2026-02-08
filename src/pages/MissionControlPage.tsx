@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
-import { getProvidersByCategory } from '@/lib/providers';
+import { searchProviders } from '@/lib/providers';
 import { simulateCallSequence } from '@/lib/simulation';
 import { scoreProviders } from '@/lib/scoring';
 import { CallStatus, ProviderCall, TranscriptEntry, TimeSlot } from '@/lib/types';
@@ -44,56 +44,64 @@ export default function MissionControlPage() {
   // Start simulation on mount
   useEffect(() => {
     if (!currentRequest) return;
-    const providers = getProvidersByCategory(currentRequest.category, currentRequest.location);
-    if (providers.length === 0) {
-      toast.error('No providers found for this category');
-      return;
-    }
+    let cancelled = false;
 
-    const initialCalls: ProviderCall[] = providers.map(p => ({
-      provider: p,
-      status: 'pending',
-      offeredSlots: [],
-      transcript: [],
-    }));
-    setCalls(initialCalls);
-    setSelectedCallId(providers[0].id);
-    completedSlotsRef.current = new Map();
+    (async () => {
+      const providers = await searchProviders(currentRequest.category, currentRequest.location);
+      if (cancelled) return;
+      if (providers.length === 0) {
+        toast.error('No providers found for this category and location');
+        return;
+      }
 
-    // Launch simulated calls
-    const cleanups = providers.map(provider => {
-      return simulateCallSequence(
-        provider,
-        (status) => {
-          updateCall(provider.id, { status });
-          if (status === 'ringing') {
-            setToolEvents(prev => [...prev, `📞 Dialing ${provider.name}...`]);
-          }
-          if (status === 'in-progress') {
-            setToolEvents(prev => [...prev, `🔗 Connected to ${provider.name}`]);
-          }
-        },
-        (entry) => {
-          addTranscript(provider.id, entry);
-          if (entry.role === 'agent') {
-            setToolEvents(prev => [...prev, `🤖 Agent querying ${provider.name}`]);
-          }
-        },
-        (offeredSlots) => {
-          updateCall(provider.id, { offeredSlots, endedAt: Date.now() });
-          completedSlotsRef.current.set(provider.id, offeredSlots);
+      const initialCalls: ProviderCall[] = providers.map(p => ({
+        provider: p,
+        status: 'pending',
+        offeredSlots: [],
+        transcript: [],
+      }));
+      setCalls(initialCalls);
+      setSelectedCallId(providers[0].id);
+      completedSlotsRef.current = new Map();
 
-          if (offeredSlots.length > 0) {
-            setToolEvents(prev => [...prev, `✅ ${provider.name}: ${offeredSlots.length} slot(s) found`]);
-          } else {
-            setToolEvents(prev => [...prev, `❌ ${provider.name}: No availability`]);
-          }
-        },
-      );
-    });
-    cleanupRef.current = cleanups;
+      // Launch simulated calls
+      const cleanups = providers.map(provider => {
+        return simulateCallSequence(
+          provider,
+          (status) => {
+            updateCall(provider.id, { status });
+            if (status === 'ringing') {
+              setToolEvents(prev => [...prev, `📞 Dialing ${provider.name}...`]);
+            }
+            if (status === 'in-progress') {
+              setToolEvents(prev => [...prev, `🔗 Connected to ${provider.name}`]);
+            }
+          },
+          (entry) => {
+            addTranscript(provider.id, entry);
+            if (entry.role === 'agent') {
+              setToolEvents(prev => [...prev, `🤖 Agent querying ${provider.name}`]);
+            }
+          },
+          (offeredSlots) => {
+            updateCall(provider.id, { offeredSlots, endedAt: Date.now() });
+            completedSlotsRef.current.set(provider.id, offeredSlots);
 
-    return () => cleanups.forEach(fn => fn());
+            if (offeredSlots.length > 0) {
+              setToolEvents(prev => [...prev, `✅ ${provider.name}: ${offeredSlots.length} slot(s) found`]);
+            } else {
+              setToolEvents(prev => [...prev, `❌ ${provider.name}: No availability`]);
+            }
+          },
+        );
+      });
+      cleanupRef.current = cleanups;
+    })();
+
+    return () => {
+      cancelled = true;
+      cleanupRef.current.forEach(fn => fn());
+    };
   }, [currentRequest]);
 
   // Auto-scroll transcript

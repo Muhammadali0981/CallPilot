@@ -1,1 +1,4 @@
 project_id = "cfhkldeomlvjpyexkekz"
+
+[functions.search-providers]
+verify_jwt = false
