@@ -1,9 +1,22 @@
 import { Provider, CallStatus, TranscriptEntry, TimeSlot } from './types';
 import { supabase } from '@/integrations/supabase/client';
+import { speakText } from './tts';
+
+// Voice IDs for different roles
+const RECEPTIONIST_VOICES: Record<string, string> = {
+  medical: 'EXAVITQu4vr4xnSDxMaL',   // Sarah - professional female
+  auto: 'nPczCjzI2devNBz1zQrb',        // Brian - casual male
+  beauty: 'pFZP5JQG7iQjIQuC4Bku',      // Lily - friendly female
+  home: 'TX3LPaxmHKxFdv7VOQHJ',        // Liam - practical male
+  fitness: 'IKne3meq5aSn9XLyUdCD',      // Charlie - energetic male
+  legal: 'JBFqnCBsd6RMkjVDRZzb',       // George - formal male
+};
+
+const AGENT_VOICE = 'onwK4e9ZLuTAKqWW03F9'; // Daniel - professional agent
 
 /**
- * Simulate a call to a provider using AI-generated dialogue.
- * Real places are "called" but the negotiation is AI-powered.
+ * Simulate a call to a provider using AI-generated dialogue (OpenAI via Lovable AI)
+ * with ElevenLabs TTS for voice playback.
  */
 export function simulateCallSequence(
   provider: Provider,
@@ -12,6 +25,7 @@ export function simulateCallSequence(
   onComplete: (offeredSlots: TimeSlot[]) => void,
   requestDescription: string = '',
   userAvailability: TimeSlot[] = [],
+  enableVoice: boolean = true,
 ): () => void {
   let cancelled = false;
 
@@ -24,7 +38,6 @@ export function simulateCallSequence(
     onStatusChange('ringing');
     onTranscript({ role: 'system', text: `📞 Calling ${provider.name}...`, timestamp: Date.now() });
 
-    // Simulate ring time
     await delay(2000 + Math.random() * 1500);
     if (cancelled) return;
 
@@ -40,7 +53,7 @@ export function simulateCallSequence(
     onTranscript({ role: 'system', text: `🔗 Connected to ${provider.name}`, timestamp: Date.now() });
 
     try {
-      // Call the AI-powered simulation edge function
+      // Call the AI-powered simulation edge function (OpenAI generates dialogue)
       const { data, error } = await supabase.functions.invoke('simulate-call', {
         body: {
           provider: {
@@ -71,17 +84,28 @@ export function simulateCallSequence(
         result: { hasAvailability: boolean; offeredSlots: TimeSlot[] };
       };
 
-      // Stream messages with realistic delays
+      const cat = provider.category || 'medical';
+      const receptionistVoice = RECEPTIONIST_VOICES[cat] || RECEPTIONIST_VOICES.medical;
+
+      // Stream messages with voice playback
       for (const msg of messages) {
         if (cancelled) return;
-        // Delay proportional to message length (simulates speaking time)
-        const speakDelay = Math.min(800 + msg.text.length * 25, 4000);
-        await delay(speakDelay);
-        if (cancelled) return;
-        onTranscript({ role: msg.role, text: msg.text, timestamp: Date.now() });
-      }
 
-      if (cancelled) return;
+        // Show transcript immediately
+        onTranscript({ role: msg.role, text: msg.text, timestamp: Date.now() });
+
+        // Play voice via ElevenLabs TTS (waits for playback to finish)
+        if (enableVoice) {
+          const voice = msg.role === 'receptionist' ? receptionistVoice : AGENT_VOICE;
+          await speakText(msg.text, voice);
+        } else {
+          // Without voice, add a reading delay
+          const readDelay = Math.min(800 + msg.text.length * 25, 4000);
+          await delay(readDelay);
+        }
+
+        if (cancelled) return;
+      }
 
       // Complete the call
       const offeredSlots = result?.hasAvailability && result?.offeredSlots?.length > 0
