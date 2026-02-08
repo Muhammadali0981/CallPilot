@@ -16,7 +16,9 @@ interface AppState {
 
   // Calls in progress
   calls: ProviderCall[];
+  missionStarted: boolean;
   setCalls: (calls: ProviderCall[]) => void;
+  setMissionStarted: (started: boolean) => void;
   updateCall: (providerId: string, update: Partial<ProviderCall>) => void;
   addTranscript: (providerId: string, entry: TranscriptEntry) => void;
 
@@ -47,10 +49,12 @@ export const useAppStore = create<AppState>((set) => ({
   setLanguage: (language) => set({ language }),
 
   currentRequest: null,
-  setCurrentRequest: (currentRequest) => set({ currentRequest }),
+  setCurrentRequest: (currentRequest) => set({ currentRequest, missionStarted: false }),
 
   calls: [],
+  missionStarted: false,
   setCalls: (calls) => set({ calls }),
+  setMissionStarted: (missionStarted) => set({ missionStarted }),
   updateCall: (providerId, update) =>
     set((state) => ({
       calls: state.calls.map((c) =>
