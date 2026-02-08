@@ -51,7 +51,7 @@ export default function MissionControlPage() {
       setMissionStarted(true);
       setSelectedCallId(providers[0].id);
 
-      // Launch simulated calls
+      // Launch AI-powered simulated calls
       const cleanups = providers.map(provider => {
         return simulateCallSequence(
           provider,
@@ -78,6 +78,8 @@ export default function MissionControlPage() {
               setToolEvents(prev => [...prev, `❌ ${provider.name}: No availability`]);
             }
           },
+          currentRequest.description,
+          currentRequest.userAvailability,
         );
       });
       cleanupRef.current = cleanups;
