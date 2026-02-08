@@ -5,7 +5,7 @@ import { searchProviders } from '@/lib/providers';
 import { simulateCallSequence } from '@/lib/simulation';
 import { scoreProviders } from '@/lib/scoring';
 import { ProviderCall, TimeSlot } from '@/lib/types';
-import { VoiceAgent } from '@/components/VoiceAgent';
+
 import { ProviderSwarmGrid } from '@/components/mission/ProviderSwarmGrid';
 import { TranscriptPanel } from '@/components/mission/TranscriptPanel';
 import { ToolEventsPanel } from '@/components/mission/ToolEventsPanel';
@@ -27,6 +27,13 @@ export default function MissionControlPage() {
   const [toolEvents, setToolEvents] = useState<string[]>([]);
   const [isTakenOver, setIsTakenOver] = useState(false);
   const cleanupRef = useRef<(() => void)[]>([]);
+
+  // Reset missionStarted if we have no calls (fresh mount or stale state)
+  useEffect(() => {
+    if (missionStarted && calls.length === 0) {
+      setMissionStarted(false);
+    }
+  }, []);
 
   // Start simulation on mount — only once per request
   useEffect(() => {
@@ -206,7 +213,7 @@ export default function MissionControlPage() {
 
         {/* Right sidebar */}
         <div className="space-y-4">
-          <VoiceAgent />
+          {/* Voice is now handled via ElevenLabs TTS server-side */}
           <ToolEventsPanel toolEvents={toolEvents} language={language} />
 
           {/* Request info */}
