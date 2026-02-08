@@ -8,12 +8,19 @@ import ResultsPage from '@/pages/ResultsPage';
 const Index = () => {
   const { currentPage } = useAppStore();
 
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'dashboard': return <DashboardPage />;
+      case 'new-request': return <NewRequestPage />;
+      case 'mission-control': return <MissionControlPage />;
+      case 'results': return <ResultsPage />;
+      default: return <DashboardPage />;
+    }
+  };
+
   return (
     <AppLayout>
-      {currentPage === 'dashboard' && <DashboardPage />}
-      {currentPage === 'new-request' && <NewRequestPage />}
-      {currentPage === 'mission-control' && <MissionControlPage />}
-      {currentPage === 'results' && <ResultsPage />}
+      {renderPage()}
     </AppLayout>
   );
 };
