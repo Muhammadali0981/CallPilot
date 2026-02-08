@@ -28,16 +28,11 @@ export default function MissionControlPage() {
   const [isTakenOver, setIsTakenOver] = useState(false);
   const cleanupRef = useRef<(() => void)[]>([]);
 
-  // Reset missionStarted if we have no calls (fresh mount or stale state)
+  // Start simulation on mount
+  const hasStartedRef = useRef(false);
   useEffect(() => {
-    if (missionStarted && calls.length === 0) {
-      setMissionStarted(false);
-    }
-  }, []);
-
-  // Start simulation on mount — only once per request
-  useEffect(() => {
-    if (!currentRequest || missionStarted) return;
+    if (!currentRequest || hasStartedRef.current) return;
+    hasStartedRef.current = true;
     let cancelled = false;
 
     (async () => {
@@ -96,7 +91,7 @@ export default function MissionControlPage() {
       cancelled = true;
       cleanupRef.current.forEach(fn => fn());
     };
-  }, [currentRequest, missionStarted]);
+  }, [currentRequest]);
 
   const allDone = calls.length > 0 && calls.every(c =>
     c.status === 'complete' || c.status === 'failed' || c.status === 'no-answer'

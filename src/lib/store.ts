@@ -49,7 +49,7 @@ export const useAppStore = create<AppState>((set) => ({
   setLanguage: (language) => set({ language }),
 
   currentRequest: null,
-  setCurrentRequest: (currentRequest) => set({ currentRequest, missionStarted: false }),
+  setCurrentRequest: (currentRequest) => set({ currentRequest, missionStarted: false, calls: [] }),
 
   calls: [],
   missionStarted: false,
