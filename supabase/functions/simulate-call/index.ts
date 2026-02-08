@@ -50,8 +50,8 @@ Generate a realistic phone call transcript as a JSON array of messages. The call
 1. Start with the receptionist answering the phone (greeting specific to the business type)
 2. The AI agent introduces itself and explains it's calling on behalf of a client
 3. The agent asks about availability for: ${requestDescription}
-4. The receptionist checks their schedule and responds (70% chance they have availability, 30% they don't)
-5. If available, the receptionist offers 1-2 specific time slots that may or may not overlap with the client's availability: ${availabilityStr}
+4. The receptionist checks their schedule and responds (80% chance they have availability, 20% they don't)
+5. If available, the receptionist MUST offer 1-2 specific time slots that fall WITHIN the client's available times: ${availabilityStr}. These are the client's FREE slots (busy times already excluded). Always pick times from this list.
 6. The agent confirms interest and thanks them
 7. Call ends naturally
 
