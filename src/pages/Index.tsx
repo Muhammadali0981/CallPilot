@@ -9,15 +9,16 @@ import { User } from '@supabase/supabase-js';
 interface IndexProps {
   signOut: () => Promise<void>;
   user: User;
+  providerToken: string | null;
 }
 
-const Index = ({ signOut, user }: IndexProps) => {
+const Index = ({ signOut, user, providerToken }: IndexProps) => {
   const { currentPage } = useAppStore();
 
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard': return <DashboardPage />;
-      case 'new-request': return <NewRequestPage />;
+      case 'new-request': return <NewRequestPage providerToken={providerToken} />;
       case 'mission-control': return <MissionControlPage />;
       case 'results': return <ResultsPage />;
       default: return <DashboardPage />;

@@ -25,6 +25,11 @@ export default function AuthPage() {
     try {
       const { error } = await lovable.auth.signInWithOAuth('google', {
         redirect_uri: window.location.origin,
+        extraParams: {
+          scope: 'openid email profile https://www.googleapis.com/auth/calendar.readonly',
+          access_type: 'offline',
+          prompt: 'consent',
+        },
       });
       if (error) {
         toast.error(error.message || 'Google sign-in failed');
