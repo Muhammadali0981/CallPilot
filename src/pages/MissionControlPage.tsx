@@ -5,6 +5,7 @@ import { getProvidersByCategory } from '@/lib/providers';
 import { simulateCallSequence } from '@/lib/simulation';
 import { scoreProviders } from '@/lib/scoring';
 import { CallStatus, ProviderCall, TranscriptEntry, TimeSlot } from '@/lib/types';
+import { VoiceAgent } from '@/components/VoiceAgent';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,8 +13,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
-  Phone, PhoneCall, PhoneOff, CheckCircle2, XCircle, Clock, Mic, MicOff,
-  Send, Wrench, AlertCircle, Volume2
+  Phone, PhoneCall, PhoneOff, CheckCircle2, XCircle, Clock,
+  Send, Wrench, AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -30,8 +31,7 @@ const statusConfig: Record<CallStatus, { color: string; icon: React.ReactNode; l
 export default function MissionControlPage() {
   const {
     language, currentRequest, calls, setCalls, updateCall, addTranscript,
-    setResults, setPage, agentId, setAgentId,
-    isVoiceConnected, setVoiceConnected, isSpeaking,
+    setResults, setPage,
   } = useAppStore();
 
   const [overrideText, setOverrideText] = useState('');
@@ -44,7 +44,7 @@ export default function MissionControlPage() {
   // Start simulation on mount
   useEffect(() => {
     if (!currentRequest) return;
-    const providers = getProvidersByCategory(currentRequest.category);
+    const providers = getProvidersByCategory(currentRequest.category, currentRequest.location);
     if (providers.length === 0) {
       toast.error('No providers found for this category');
       return;
@@ -268,32 +268,7 @@ export default function MissionControlPage() {
 
         {/* Right sidebar */}
         <div className="space-y-4">
-          {/* Voice Agent */}
-          <Card className="glass">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Volume2 className="h-4 w-4" />
-                Voice Agent
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Input
-                placeholder={t('mission.agentId', language)}
-                value={agentId}
-                onChange={(e) => setAgentId(e.target.value)}
-                className="text-xs"
-              />
-              <div className="flex items-center justify-between">
-                <div className={`flex items-center gap-2 text-sm ${isVoiceConnected ? 'text-green-500' : 'text-muted-foreground'}`}>
-                  {isVoiceConnected ? <Mic className="h-4 w-4 animate-pulse" /> : <MicOff className="h-4 w-4" />}
-                  {isVoiceConnected ? t('mission.listening', language) : 'Disconnected'}
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Enter your ElevenLabs agent ID to enable live voice interaction.
-              </p>
-            </CardContent>
-          </Card>
+          <VoiceAgent />
 
           {/* Tool Events */}
           <Card className="glass">
