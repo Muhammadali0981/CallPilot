@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { CalendarSync, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { CalendarSync, Loader2, CheckCircle2, AlertTriangle, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CalendarEvent {
@@ -17,69 +17,114 @@ interface GoogleCalendarSyncProps {
   onEventsLoaded: (events: CalendarEvent[]) => void;
 }
 
-async function getValidAccessToken(): Promise<string | null> {
-  const storedToken = localStorage.getItem('google_access_token');
-  const storedRefresh = localStorage.getItem('google_refresh_token');
-
-  console.log('[calendar-sync] Stored access token:', storedToken ? `${storedToken.substring(0, 20)}...` : 'NONE');
-  console.log('[calendar-sync] Stored refresh token:', storedRefresh ? 'present' : 'NONE');
-
-  // Try existing access token first
-  if (storedToken) {
-    const testRes = await fetch(
-      'https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=' + encodeURIComponent(storedToken)
-    );
-    if (testRes.ok) {
-      console.log('[calendar-sync] Stored access token is still valid');
-      return storedToken;
-    }
-    console.log('[calendar-sync] Stored access token expired');
-  }
-
-  // Try refresh
-  if (storedRefresh) {
-    console.log('[calendar-sync] Attempting token refresh...');
-    const { data, error } = await supabase.functions.invoke('refresh-google-token', {
-      body: { refreshToken: storedRefresh },
-    });
-
-    if (!error && data?.access_token) {
-      localStorage.setItem('google_access_token', data.access_token);
-      console.log('[calendar-sync] Token refreshed successfully');
-      return data.access_token;
-    }
-    console.error('[calendar-sync] Refresh failed:', error || data?.error);
-  }
-
-  return null;
-}
-
 export function GoogleCalendarSync({ isGoogleUser, onEventsLoaded }: GoogleCalendarSyncProps) {
   const [loading, setLoading] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [synced, setSynced] = useState(false);
+  const [connected, setConnected] = useState<boolean | null>(null); // null = checking
   const [eventCount, setEventCount] = useState(0);
+
+  // Check if user has connected their calendar (has tokens stored)
+  const checkConnection = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('oauth_tokens')
+        .select('id')
+        .eq('provider', 'google')
+        .maybeSingle();
+
+      setConnected(!error && !!data);
+    } catch {
+      setConnected(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkConnection();
+  }, [checkConnection]);
+
+  // Handle OAuth callback — check for code in URL on mount
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get('code');
+    const calendarAuth = url.searchParams.get('calendar_auth');
+
+    if (code && calendarAuth === 'true') {
+      // Remove params from URL
+      url.searchParams.delete('code');
+      url.searchParams.delete('state');
+      url.searchParams.delete('scope');
+      url.searchParams.delete('calendar_auth');
+      window.history.replaceState({}, '', url.toString());
+
+      // Exchange code for tokens
+      handleCodeExchange(code);
+    }
+  }, []);
+
+  const handleCodeExchange = async (code: string) => {
+    setConnecting(true);
+    try {
+      const redirectUri = `${window.location.origin}/?calendar_auth=true`;
+      const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
+        body: { action: 'exchange_code', code, redirectUri },
+      });
+
+      if (error || data?.error) {
+        console.error('Token exchange failed:', error || data);
+        toast.error(data?.error || 'Failed to connect Google Calendar');
+        return;
+      }
+
+      setConnected(true);
+      toast.success('Google Calendar connected! Click "Sync Calendar" to import events.');
+    } catch (err) {
+      console.error('Calendar auth failed:', err);
+      toast.error('Failed to connect Google Calendar');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    try {
+      const redirectUri = `${window.location.origin}/?calendar_auth=true`;
+      const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
+        body: { action: 'get_auth_url', redirectUri },
+      });
+
+      if (error || data?.error || !data?.authUrl) {
+        console.error('Failed to get auth URL:', error || data);
+        toast.error('Failed to start Google Calendar authorization');
+        setConnecting(false);
+        return;
+      }
+
+      // Redirect to Google consent screen
+      window.location.href = data.authUrl;
+    } catch (err) {
+      console.error('Connect failed:', err);
+      toast.error('Failed to connect to Google Calendar');
+      setConnecting(false);
+    }
+  };
 
   const handleSync = async () => {
     setLoading(true);
     try {
-      const validToken = await getValidAccessToken();
-
-      if (!validToken) {
-        toast.error('Calendar access token not found. Please sign out and sign back in with Google.');
-        return;
-      }
-
       const { data, error } = await supabase.functions.invoke('google-calendar-events', {
-        body: { googleAccessToken: validToken },
+        body: {},
       });
 
       if (error || data?.error) {
         console.error('Calendar sync error:', error || data);
-        if (data?.status === 401 || data?.status === 403) {
-          toast.error('Calendar access denied. Please sign out and sign in again with Google.');
-          localStorage.removeItem('google_access_token');
+
+        if (data?.error === 'no_tokens' || data?.error === 'token_expired') {
+          setConnected(false);
+          toast.error('Calendar access expired. Please reconnect your Google Calendar.');
         } else {
-          toast.error('Failed to fetch calendar events.');
+          toast.error(data?.message || 'Failed to fetch calendar events.');
         }
         return;
       }
@@ -111,6 +156,40 @@ export function GoogleCalendarSync({ isGoogleUser, onEventsLoaded }: GoogleCalen
     );
   }
 
+  // Still checking connection status
+  if (connected === null) {
+    return (
+      <Button variant="outline" disabled>
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        Checking calendar...
+      </Button>
+    );
+  }
+
+  // Not connected — show connect button
+  if (!connected) {
+    return (
+      <div className="space-y-2">
+        <Button
+          className="gradient-primary border-0"
+          onClick={handleConnect}
+          disabled={connecting}
+        >
+          {connecting ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <ExternalLink className="mr-2 h-4 w-4" />
+          )}
+          {connecting ? 'Connecting...' : 'Connect Google Calendar'}
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          Opens Google to grant calendar read access. Your data stays private.
+        </p>
+      </div>
+    );
+  }
+
+  // Connected — show sync button
   return (
     <div className="space-y-2">
       <Button
@@ -126,7 +205,7 @@ export function GoogleCalendarSync({ isGoogleUser, onEventsLoaded }: GoogleCalen
         ) : (
           <CalendarSync className="mr-2 h-4 w-4" />
         )}
-        {synced ? `Synced (${eventCount} events)` : 'Import Google Calendar'}
+        {synced ? `Synced (${eventCount} events)` : 'Sync Calendar'}
       </Button>
       {synced && (
         <p className="text-xs text-muted-foreground">
