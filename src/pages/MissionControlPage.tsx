@@ -23,7 +23,12 @@ export default function MissionControlPage() {
   } = useAppStore();
 
   const [overrideText, setOverrideText] = useState('');
-  const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
+  const [selectedCallId, _setSelectedCallId] = useState<string | null>(null);
+  const selectedCallIdRef = useRef<string | null>(null);
+  const setSelectedCallId = useCallback((id: string | null) => {
+    _setSelectedCallId(id);
+    selectedCallIdRef.current = id;
+  }, []);
   const [toolEvents, setToolEvents] = useState<string[]>([]);
   const [isTakenOver, setIsTakenOver] = useState(false);
   const cleanupRef = useRef<(() => void)[]>([]);
@@ -82,6 +87,7 @@ export default function MissionControlPage() {
           },
           currentRequest.description,
           currentRequest.userAvailability,
+          () => selectedCallIdRef.current === provider.id,
         );
       });
       cleanupRef.current = cleanups;

@@ -25,7 +25,7 @@ export function simulateCallSequence(
   onComplete: (offeredSlots: TimeSlot[]) => void,
   requestDescription: string = '',
   userAvailability: TimeSlot[] = [],
-  enableVoice: boolean = true,
+  shouldPlayVoice: () => boolean = () => true,
 ): () => void {
   let cancelled = false;
 
@@ -96,7 +96,7 @@ export function simulateCallSequence(
         onTranscript({ role: msg.role, text: msg.text, timestamp: Date.now() });
 
         // Play voice via ElevenLabs TTS (waits for playback to finish)
-        if (enableVoice) {
+        if (shouldPlayVoice()) {
           const voice = msg.role === 'receptionist' ? receptionistVoice : AGENT_VOICE;
           await speakText(msg.text, voice);
         } else {
