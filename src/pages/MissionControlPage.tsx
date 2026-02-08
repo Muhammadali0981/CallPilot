@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 export default function MissionControlPage() {
   const {
     language, currentRequest, calls, setCalls, updateCall, addTranscript,
-    setResults, setPage,
+    setResults, setPage, missionStarted, setMissionStarted,
   } = useAppStore();
 
   const [overrideText, setOverrideText] = useState('');
@@ -28,9 +28,9 @@ export default function MissionControlPage() {
   const [isTakenOver, setIsTakenOver] = useState(false);
   const cleanupRef = useRef<(() => void)[]>([]);
 
-  // Start simulation on mount
+  // Start simulation on mount — only once per request
   useEffect(() => {
-    if (!currentRequest) return;
+    if (!currentRequest || missionStarted) return;
     let cancelled = false;
 
     (async () => {
@@ -48,6 +48,7 @@ export default function MissionControlPage() {
         transcript: [],
       }));
       setCalls(initialCalls);
+      setMissionStarted(true);
       setSelectedCallId(providers[0].id);
 
       // Launch simulated calls
@@ -86,7 +87,7 @@ export default function MissionControlPage() {
       cancelled = true;
       cleanupRef.current.forEach(fn => fn());
     };
-  }, [currentRequest]);
+  }, [currentRequest, missionStarted]);
 
   const allDone = calls.length > 0 && calls.every(c =>
     c.status === 'complete' || c.status === 'failed' || c.status === 'no-answer'
