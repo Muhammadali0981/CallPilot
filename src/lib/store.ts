@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import { BookingRequest, Booking, ProviderCall, Language, AppPage, TranscriptEntry, ScoredResult, Category } from './types';
 
+interface CalendarEvent {
+  id: string;
+  summary: string;
+  start: string;
+  end: string;
+  allDay: boolean;
+}
+
 interface AppState {
   // Navigation
   currentPage: AppPage;
@@ -13,6 +21,10 @@ interface AppState {
   // Current request
   currentRequest: BookingRequest | null;
   setCurrentRequest: (req: BookingRequest | null) => void;
+
+  // Calendar events (persisted across page changes)
+  calendarEvents: CalendarEvent[];
+  setCalendarEvents: (events: CalendarEvent[]) => void;
 
   // Calls in progress
   calls: ProviderCall[];
@@ -40,6 +52,9 @@ export const useAppStore = create<AppState>((set) => ({
 
   currentRequest: null,
   setCurrentRequest: (currentRequest) => set({ currentRequest, missionStarted: false, calls: [] }),
+
+  calendarEvents: [],
+  setCalendarEvents: (calendarEvents) => set({ calendarEvents }),
 
   calls: [],
   missionStarted: false,

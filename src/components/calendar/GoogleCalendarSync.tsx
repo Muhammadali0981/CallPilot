@@ -15,14 +15,15 @@ interface CalendarEvent {
 interface GoogleCalendarSyncProps {
   isGoogleUser: boolean;
   onEventsLoaded: (events: CalendarEvent[]) => void;
+  initialEvents?: CalendarEvent[];
 }
 
-export function GoogleCalendarSync({ isGoogleUser, onEventsLoaded }: GoogleCalendarSyncProps) {
+export function GoogleCalendarSync({ isGoogleUser, onEventsLoaded, initialEvents = [] }: GoogleCalendarSyncProps) {
   const [loading, setLoading] = useState(false);
   const [connecting, setConnecting] = useState(false);
-  const [synced, setSynced] = useState(false);
+  const [synced, setSynced] = useState(initialEvents.length > 0);
   const [connected, setConnected] = useState<boolean | null>(null); // null = checking
-  const [eventCount, setEventCount] = useState(0);
+  const [eventCount, setEventCount] = useState(initialEvents.length);
 
   // Check if user has connected their calendar (has tokens stored)
   const checkConnection = useCallback(async () => {

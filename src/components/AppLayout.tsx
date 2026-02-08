@@ -82,6 +82,11 @@ export function AppLayout({ children, signOut, user }: AppLayoutProps) {
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
 
+            {/* User email */}
+            <span className="hidden md:inline text-xs text-muted-foreground truncate max-w-[160px]" title={user.email}>
+              {user.email}
+            </span>
+
             {/* Sign out */}
             <Button variant="ghost" size="icon" onClick={signOut} title="Sign out">
               <LogOut className="h-4 w-4" />
