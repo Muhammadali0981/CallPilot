@@ -10,7 +10,7 @@ import { Loader2 } from "lucide-react";
 const queryClient = new QueryClient();
 
 function AppContent() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, providerToken } = useAuth();
 
   if (loading) {
     return (
@@ -24,7 +24,7 @@ function AppContent() {
     return <AuthPage />;
   }
 
-  return <Index signOut={signOut} user={user} />;
+  return <Index signOut={signOut} user={user} providerToken={providerToken} />;
 }
 
 const App = () => (

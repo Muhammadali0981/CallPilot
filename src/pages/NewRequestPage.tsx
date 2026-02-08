@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
+import { GoogleCalendarSync } from '@/components/calendar/GoogleCalendarSync';
 import { Rocket, Stethoscope, Car, Scissors, Home, Dumbbell, Scale, MapPin, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -22,7 +23,11 @@ const categories: { value: Category; icon: React.ReactNode; key: string }[] = [
   { value: 'legal', icon: <Scale className="h-5 w-5" />, key: 'category.legal' },
 ];
 
-export default function NewRequestPage() {
+interface NewRequestPageProps {
+  providerToken: string | null;
+}
+
+export default function NewRequestPage({ providerToken }: NewRequestPageProps) {
   const { language, setPage, setCurrentRequest } = useAppStore();
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<Category>('medical');
@@ -30,6 +35,7 @@ export default function NewRequestPage() {
   const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [weights, setWeights] = useState({ availability: 50, rating: 30, distance: 20 });
 
   // Request geolocation on mount
@@ -235,6 +241,12 @@ export default function NewRequestPage() {
 
         {/* Right: Calendar */}
         <div className="space-y-6">
+          {/* Google Calendar Sync */}
+          <GoogleCalendarSync
+            providerToken={providerToken}
+            onEventsLoaded={setCalendarEvents}
+          />
+
           <Card className="glass">
             <CardHeader>
               <CardTitle className="text-lg">{t('request.availability', language)}</CardTitle>
@@ -248,6 +260,31 @@ export default function NewRequestPage() {
               />
             </CardContent>
           </Card>
+
+          {calendarEvents.length > 0 && (
+            <Card className="glass border-primary/20">
+              <CardContent className="p-4">
+                <p className="mb-2 text-sm font-medium">📅 Upcoming busy times ({calendarEvents.length}):</p>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {calendarEvents.slice(0, 10).map((evt, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
+                      <span className="font-medium">{evt.summary}</span>
+                      <span>—</span>
+                      <span>
+                        {evt.allDay
+                          ? new Date(evt.start).toLocaleDateString()
+                          : new Date(evt.start).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  ))}
+                  {calendarEvents.length > 10 && (
+                    <p className="text-xs text-muted-foreground">...and {calendarEvents.length - 10} more</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {selectedDates.length > 0 && (
             <Card className="glass">
