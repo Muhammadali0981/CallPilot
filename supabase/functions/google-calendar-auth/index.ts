@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
 
     // ACTION: get_auth_url — generate the Google OAuth consent URL
     if (action === "get_auth_url") {
-      const state = crypto.randomUUID();
+      const state = `calendar_${crypto.randomUUID()}`;
       const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,

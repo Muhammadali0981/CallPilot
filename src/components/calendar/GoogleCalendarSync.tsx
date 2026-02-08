@@ -47,14 +47,13 @@ export function GoogleCalendarSync({ isGoogleUser, onEventsLoaded }: GoogleCalen
   useEffect(() => {
     const url = new URL(window.location.href);
     const code = url.searchParams.get('code');
-    const calendarAuth = url.searchParams.get('calendar_auth');
+    const state = url.searchParams.get('state');
 
-    if (code && calendarAuth === 'true') {
+    if (code && state?.startsWith('calendar_')) {
       // Remove params from URL
       url.searchParams.delete('code');
       url.searchParams.delete('state');
       url.searchParams.delete('scope');
-      url.searchParams.delete('calendar_auth');
       window.history.replaceState({}, '', url.toString());
 
       // Exchange code for tokens
@@ -65,7 +64,7 @@ export function GoogleCalendarSync({ isGoogleUser, onEventsLoaded }: GoogleCalen
   const handleCodeExchange = async (code: string) => {
     setConnecting(true);
     try {
-      const redirectUri = `${window.location.origin}/?calendar_auth=true`;
+      const redirectUri = window.location.origin;
       const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
         body: { action: 'exchange_code', code, redirectUri },
       });
@@ -89,7 +88,7 @@ export function GoogleCalendarSync({ isGoogleUser, onEventsLoaded }: GoogleCalen
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const redirectUri = `${window.location.origin}/?calendar_auth=true`;
+      const redirectUri = window.location.origin;
       const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
         body: { action: 'get_auth_url', redirectUri },
       });
