@@ -24,11 +24,40 @@ const categories: { value: Category; icon: React.ReactNode; key: string }[] = [
 ];
 
 /**
+ * Parse an ISO datetime string into local day (YYYY-MM-DD) and minutes-since-midnight,
+ * WITHOUT using new Date() which can shift across timezones.
+ * e.g. "2026-02-10T09:00:00+05:30" → { day: "2026-02-10", minutes: 540 }
+ * Falls back to Date object if parsing fails.
+ */
+function parseEventTime(iso: string): { day: string; minutes: number } {
+  // Try to extract date and time directly from ISO string
+  // Format: YYYY-MM-DDTHH:MM:SS or YYYY-MM-DD
+  const match = iso.match(/^(\d{4}-\d{2}-\d{2})(?:T(\d{2}):(\d{2}))?/);
+  if (match) {
+    const day = match[1];
+    const hours = match[2] ? parseInt(match[2], 10) : 0;
+    const mins = match[3] ? parseInt(match[3], 10) : 0;
+    return { day, minutes: hours * 60 + mins };
+  }
+  // Fallback
+  const d = new Date(iso);
+  const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return { day, minutes: d.getHours() * 60 + d.getMinutes() };
+}
+
+/**
  * Subtract Google Calendar busy events from base availability slots.
  * Returns refined TimeSlots with busy periods carved out.
  */
 function subtractBusyTimes(baseSlots: TimeSlot[], events: any[]): TimeSlot[] {
   if (!events || events.length === 0) return baseSlots;
+
+  const toMin = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const toTime = (m: number) =>
+    `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
   const result: TimeSlot[] = [];
 
@@ -36,13 +65,11 @@ function subtractBusyTimes(baseSlots: TimeSlot[], events: any[]): TimeSlot[] {
     // Find events that overlap with this day
     const dayEvents = events.filter(evt => {
       if (evt.allDay) {
-        // All-day event on this date blocks the whole day
-        const evtDate = evt.start?.split('T')[0] || evt.start;
+        const evtDate = (evt.start || '').split('T')[0];
         return evtDate === slot.day;
       }
-      const evtStart = new Date(evt.start);
-      const evtDay = `${evtStart.getFullYear()}-${String(evtStart.getMonth() + 1).padStart(2, '0')}-${String(evtStart.getDate()).padStart(2, '0')}`;
-      return evtDay === slot.day;
+      const parsed = parseEventTime(evt.start);
+      return parsed.day === slot.day;
     });
 
     if (dayEvents.length === 0) {
@@ -51,23 +78,16 @@ function subtractBusyTimes(baseSlots: TimeSlot[], events: any[]): TimeSlot[] {
     }
 
     // If any all-day event, skip entire day
-    if (dayEvents.some(e => e.allDay)) continue;
+    if (dayEvents.some((e: any) => e.allDay)) continue;
 
     // Convert busy periods to minutes and carve out free windows
-    const toMin = (t: string) => {
-      const [h, m] = t.split(':').map(Number);
-      return h * 60 + m;
-    };
-    const toTime = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-
-    const busyRanges = dayEvents.map(evt => {
-      const s = new Date(evt.start);
-      const e = new Date(evt.end);
-      return {
-        start: s.getHours() * 60 + s.getMinutes(),
-        end: e.getHours() * 60 + e.getMinutes(),
-      };
-    }).sort((a, b) => a.start - b.start);
+    const busyRanges = dayEvents.map((evt: any) => {
+      const s = parseEventTime(evt.start);
+      const e = parseEventTime(evt.end);
+      // Handle events ending at midnight (00:00) = 1440
+      const endMin = e.minutes === 0 && e.day !== s.day ? 1440 : e.minutes;
+      return { start: s.minutes, end: endMin };
+    }).sort((a: any, b: any) => a.start - b.start);
 
     let cursor = toMin(slot.start);
     const slotEnd = toMin(slot.end);
@@ -84,6 +104,7 @@ function subtractBusyTimes(baseSlots: TimeSlot[], events: any[]): TimeSlot[] {
     }
   }
 
+  console.log('[subtractBusyTimes] Base slots:', baseSlots.length, '→ Free slots:', result.length, result);
   return result;
 }
 

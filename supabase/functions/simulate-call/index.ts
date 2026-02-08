@@ -40,6 +40,9 @@ serve(async (req) => {
       category: string;
     };
 
+    console.log(`[simulate-call] Provider: ${provider.name}, Category: ${category}`);
+    console.log(`[simulate-call] User availability (${userAvailability.length} slots):`, JSON.stringify(userAvailability));
+
     const availabilityStr = userAvailability
       .map((s: TimeSlot) => `${s.day} ${s.start}-${s.end}`)
       .join(", ");

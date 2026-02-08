@@ -54,7 +54,7 @@ export function simulateCallSequence(
 
     try {
       // Call the AI-powered simulation edge function (OpenAI generates dialogue)
-      console.log(`[simulate] Calling simulate-call for ${provider.name}...`);
+      console.log(`[simulate] Calling simulate-call for ${provider.name} with userAvailability:`, JSON.stringify(userAvailability));
       const { data, error } = await supabase.functions.invoke('simulate-call', {
         body: {
           provider: {
