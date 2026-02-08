@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { Language } from '@/lib/types';
 import { t } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +11,7 @@ interface Props {
   language: Language;
 }
 
-export function ToolEventsPanel({ toolEvents, language }: Props) {
+export const ToolEventsPanel = forwardRef<HTMLDivElement, Props>(function ToolEventsPanel({ toolEvents, language }, ref) {
   return (
     <Card className="glass">
       <CardHeader className="pb-3">
@@ -40,4 +41,4 @@ export function ToolEventsPanel({ toolEvents, language }: Props) {
       </CardContent>
     </Card>
   );
-}
+});

@@ -29,16 +29,6 @@ interface AppState {
   // Bookings history
   bookings: Booking[];
   addBooking: (booking: Booking) => void;
-
-  // ElevenLabs
-  agentId: string;
-  setAgentId: (id: string) => void;
-
-  // Voice status
-  isVoiceConnected: boolean;
-  setVoiceConnected: (connected: boolean) => void;
-  isSpeaking: boolean;
-  setIsSpeaking: (speaking: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -76,12 +66,4 @@ export const useAppStore = create<AppState>((set) => ({
   bookings: [],
   addBooking: (booking) =>
     set((state) => ({ bookings: [booking, ...state.bookings] })),
-
-  agentId: '',
-  setAgentId: (agentId) => set({ agentId }),
-
-  isVoiceConnected: false,
-  setVoiceConnected: (isVoiceConnected) => set({ isVoiceConnected }),
-  isSpeaking: false,
-  setIsSpeaking: (isSpeaking) => set({ isSpeaking }),
 }));
