@@ -17,64 +17,41 @@ interface GoogleCalendarSyncProps {
   onEventsLoaded: (events: CalendarEvent[]) => void;
 }
 
-/**
- * Try multiple approaches to get calendar events:
- * 1. Use stored access token directly with Google API
- * 2. Try refreshing the token via edge function
- * 3. Call the edge function without a token (uses gateway)
- */
-async function fetchCalendarEvents(): Promise<{ events: CalendarEvent[]; error?: string }> {
+async function getValidAccessToken(): Promise<string | null> {
   const storedToken = localStorage.getItem('google_access_token');
+  const storedRefresh = localStorage.getItem('google_refresh_token');
 
-  // Attempt 1: Use stored access token if available
+  console.log('[calendar-sync] Stored access token:', storedToken ? `${storedToken.substring(0, 20)}...` : 'NONE');
+  console.log('[calendar-sync] Stored refresh token:', storedRefresh ? 'present' : 'NONE');
+
+  // Try existing access token first
   if (storedToken) {
-    console.log('[calendar-sync] Trying stored access token...');
-    const { data, error } = await supabase.functions.invoke('google-calendar-events', {
-      body: { googleAccessToken: storedToken },
+    const testRes = await fetch(
+      'https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=' + encodeURIComponent(storedToken)
+    );
+    if (testRes.ok) {
+      console.log('[calendar-sync] Stored access token is still valid');
+      return storedToken;
+    }
+    console.log('[calendar-sync] Stored access token expired');
+  }
+
+  // Try refresh
+  if (storedRefresh) {
+    console.log('[calendar-sync] Attempting token refresh...');
+    const { data, error } = await supabase.functions.invoke('refresh-google-token', {
+      body: { refreshToken: storedRefresh },
     });
 
-    if (!error && !data?.error && data?.events) {
-      console.log('[calendar-sync] Stored token worked!');
-      return { events: data.events };
+    if (!error && data?.access_token) {
+      localStorage.setItem('google_access_token', data.access_token);
+      console.log('[calendar-sync] Token refreshed successfully');
+      return data.access_token;
     }
-
-    console.log('[calendar-sync] Stored token failed, trying refresh...');
-
-    // Attempt 2: Try refreshing the token
-    const storedRefresh = localStorage.getItem('google_refresh_token');
-    if (storedRefresh) {
-      const refreshResult = await supabase.functions.invoke('refresh-google-token', {
-        body: { refreshToken: storedRefresh },
-      });
-
-      if (!refreshResult.error && refreshResult.data?.access_token) {
-        const newToken = refreshResult.data.access_token;
-        localStorage.setItem('google_access_token', newToken);
-        console.log('[calendar-sync] Token refreshed, retrying...');
-
-        const retryResult = await supabase.functions.invoke('google-calendar-events', {
-          body: { googleAccessToken: newToken },
-        });
-
-        if (!retryResult.error && !retryResult.data?.error && retryResult.data?.events) {
-          return { events: retryResult.data.events };
-        }
-      }
-    }
+    console.error('[calendar-sync] Refresh failed:', error || data?.error);
   }
 
-  // Attempt 3: Call without token — edge function will use gateway
-  console.log('[calendar-sync] Trying gateway approach (no token)...');
-  const { data, error } = await supabase.functions.invoke('google-calendar-events', {
-    body: {},
-  });
-
-  if (error || data?.error) {
-    console.error('[calendar-sync] All approaches failed:', error || data?.error);
-    return { events: [], error: data?.detail || data?.error || error?.message || 'Failed to fetch calendar' };
-  }
-
-  return { events: data?.events || [] };
+  return null;
 }
 
 export function GoogleCalendarSync({ isGoogleUser, onEventsLoaded }: GoogleCalendarSyncProps) {
@@ -85,15 +62,29 @@ export function GoogleCalendarSync({ isGoogleUser, onEventsLoaded }: GoogleCalen
   const handleSync = async () => {
     setLoading(true);
     try {
-      const result = await fetchCalendarEvents();
+      const validToken = await getValidAccessToken();
 
-      if (result.error) {
-        console.error('Calendar sync error:', result.error);
-        toast.error('Failed to fetch calendar events. Please sign out and sign in again with Google.');
+      if (!validToken) {
+        toast.error('Calendar access token not found. Please sign out and sign back in with Google.');
         return;
       }
 
-      const events = result.events;
+      const { data, error } = await supabase.functions.invoke('google-calendar-events', {
+        body: { googleAccessToken: validToken },
+      });
+
+      if (error || data?.error) {
+        console.error('Calendar sync error:', error || data);
+        if (data?.status === 401 || data?.status === 403) {
+          toast.error('Calendar access denied. Please sign out and sign in again with Google.');
+          localStorage.removeItem('google_access_token');
+        } else {
+          toast.error('Failed to fetch calendar events.');
+        }
+        return;
+      }
+
+      const events: CalendarEvent[] = data.events || [];
       setEventCount(events.length);
       setSynced(true);
       onEventsLoaded(events);
