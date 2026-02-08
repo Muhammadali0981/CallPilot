@@ -92,14 +92,13 @@ interface NewRequestPageProps {
 }
 
 export default function NewRequestPage({ isGoogleUser }: NewRequestPageProps) {
-  const { language, setPage, setCurrentRequest } = useAppStore();
+  const { language, setPage, setCurrentRequest, calendarEvents, setCalendarEvents } = useAppStore();
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<Category>('medical');
   const [location, setLocation] = useState('');
   const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
-  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [weights, setWeights] = useState({ availability: 50, rating: 30, distance: 20 });
 
   // Request geolocation on mount
@@ -314,6 +313,7 @@ export default function NewRequestPage({ isGoogleUser }: NewRequestPageProps) {
           <GoogleCalendarSync
             isGoogleUser={isGoogleUser}
             onEventsLoaded={setCalendarEvents}
+            initialEvents={calendarEvents}
           />
 
           <Card className="glass">
@@ -343,7 +343,7 @@ export default function NewRequestPage({ isGoogleUser }: NewRequestPageProps) {
                       <span>
                         {evt.allDay
                           ? new Date(evt.start).toLocaleDateString()
-                          : new Date(evt.start).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          : `${new Date(evt.start).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} – ${new Date(evt.end).toLocaleString([], { hour: '2-digit', minute: '2-digit' })}`}
                       </span>
                     </div>
                   ))}
