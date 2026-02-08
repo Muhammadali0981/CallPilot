@@ -4,8 +4,14 @@ import DashboardPage from '@/pages/DashboardPage';
 import NewRequestPage from '@/pages/NewRequestPage';
 import MissionControlPage from '@/pages/MissionControlPage';
 import ResultsPage from '@/pages/ResultsPage';
+import { User } from '@supabase/supabase-js';
 
-const Index = () => {
+interface IndexProps {
+  signOut: () => Promise<void>;
+  user: User;
+}
+
+const Index = ({ signOut, user }: IndexProps) => {
   const { currentPage } = useAppStore();
 
   const renderPage = () => {
@@ -19,7 +25,7 @@ const Index = () => {
   };
 
   return (
-    <AppLayout>
+    <AppLayout signOut={signOut} user={user}>
       {renderPage()}
     </AppLayout>
   );
