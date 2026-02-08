@@ -81,7 +81,10 @@ export default function NewRequestPage() {
       return;
     }
     const userAvailability: TimeSlot[] = selectedDates.map(d => {
-      const day = d.toISOString().split('T')[0];
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const dayNum = String(d.getDate()).padStart(2, '0');
+      const day = `${year}-${month}-${dayNum}`;
       return { day, start: '08:00', end: '18:00' };
     });
 
