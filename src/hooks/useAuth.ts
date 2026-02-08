@@ -8,6 +8,9 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const [providerToken, setProviderToken] = useState<string | null>(null);
 
+  const isGoogleUser = (u: User | null) =>
+    u?.app_metadata?.provider === 'google' || u?.app_metadata?.providers?.includes('google');
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -16,7 +19,6 @@ export function useAuth() {
         // Capture provider_token on sign-in (only available during initial OAuth callback)
         if (session?.provider_token) {
           setProviderToken(session.provider_token);
-          // Persist it for later use
           localStorage.setItem('google_access_token', session.provider_token);
         }
         setLoading(false);
@@ -43,5 +45,5 @@ export function useAuth() {
     await supabase.auth.signOut();
   };
 
-  return { user, session, loading, signOut, providerToken };
+  return { user, session, loading, signOut, providerToken, isGoogleUser: isGoogleUser(user) };
 }
