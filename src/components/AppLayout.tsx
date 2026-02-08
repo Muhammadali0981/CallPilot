@@ -2,8 +2,9 @@ import { useAppStore } from '@/lib/store';
 import { t, languageNames } from '@/lib/i18n';
 import { Language, AppPage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Phone, Globe, Moon, Sun } from 'lucide-react';
+import { Phone, Globe, Moon, Sun, LogOut } from 'lucide-react';
 import { useState } from 'react';
+import { User } from '@supabase/supabase-js';
 
 const navItems: { page: AppPage; key: string }[] = [
   { page: 'dashboard', key: 'nav.dashboard' },
@@ -12,7 +13,13 @@ const navItems: { page: AppPage; key: string }[] = [
   { page: 'results', key: 'nav.results' },
 ];
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+interface AppLayoutProps {
+  children: React.ReactNode;
+  signOut: () => Promise<void>;
+  user: User;
+}
+
+export function AppLayout({ children, signOut, user }: AppLayoutProps) {
   const { currentPage, setPage, language, setLanguage } = useAppStore();
   const [dark, setDark] = useState(true);
 
@@ -73,6 +80,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             {/* Dark mode */}
             <Button variant="ghost" size="icon" onClick={toggleDark}>
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+
+            {/* Sign out */}
+            <Button variant="ghost" size="icon" onClick={signOut} title="Sign out">
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </div>
