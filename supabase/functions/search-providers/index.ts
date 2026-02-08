@@ -5,14 +5,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Map app categories to Mapbox POI search terms
+// Map app categories to Mapbox POI search terms — use category + location together
 const categorySearchTerms: Record<string, string> = {
-  medical: 'hospital',
-  auto: 'auto repair',
-  beauty: 'salon',
-  home: 'plumber',
-  fitness: 'gym',
-  legal: 'lawyer',
+  medical: 'hospital clinic',
+  auto: 'auto repair garage',
+  beauty: 'hair salon spa',
+  home: 'plumber electrician',
+  fitness: 'gym fitness',
+  legal: 'lawyer attorney',
 };
 
 function generateSlots(count: number): { day: string; start: string; end: string }[] {
@@ -52,22 +52,13 @@ serve(async (req) => {
     }
 
     const searchText = categorySearchTerms[category] || category;
-    // First geocode the location to get coordinates for proximity bias
-    const locEncoded = encodeURIComponent(location);
-    const geoUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${locEncoded}.json?access_token=${MAPBOX_TOKEN}&limit=1`;
-    const geoRes = await fetch(geoUrl);
-    const geoData = await geoRes.json();
-    
-    let proximity = '';
-    if (geoData.features?.length > 0) {
-      const [lng, lat] = geoData.features[0].center;
-      proximity = `&proximity=${lng},${lat}`;
-    }
 
-    const encoded = encodeURIComponent(searchText);
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${MAPBOX_TOKEN}&limit=10${proximity}`;
+    // Combine category + location in the query for best results
+    const combinedQuery = `${searchText} near ${location}`;
+    const encoded = encodeURIComponent(combinedQuery);
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${MAPBOX_TOKEN}&limit=10`;
     
-    console.log(`Searching Mapbox for: ${searchText} near ${location}`);
+    console.log(`Searching Mapbox for: ${combinedQuery}`);
 
     const response = await fetch(url);
     if (!response.ok) {
@@ -78,7 +69,6 @@ serve(async (req) => {
 
     const data = await response.json();
     const features = data.features || [];
-
     console.log(`Found ${features.length} results from Mapbox`);
 
     const providers = features.map((feature: any, idx: number) => {
