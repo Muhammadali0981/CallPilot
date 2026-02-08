@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, forwardRef } from 'react';
 import { ProviderCall, TimeSlot, Language } from '@/lib/types';
 import { t } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,7 +38,7 @@ function isConflict(text: string, userAvailability: TimeSlot[]): boolean {
   return !matchesAvailability; // conflict if NOT in user availability
 }
 
-export function TranscriptPanel({ selectedCall, userAvailability, overrideText, onOverrideChange, onSendOverride, language }: Props) {
+export const TranscriptPanel = forwardRef<HTMLDivElement, Props>(function TranscriptPanel({ selectedCall, userAvailability, overrideText, onOverrideChange, onSendOverride, language }, ref) {
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -110,4 +110,4 @@ export function TranscriptPanel({ selectedCall, userAvailability, overrideText, 
       </CardContent>
     </Card>
   );
-}
+});
