@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import { t } from '@/lib/i18n';
 import { Booking, ScoredResult } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { BookingSummaryCard } from '@/components/results/BookingSummaryCard';
 import { Trophy, Star, MapPin, Clock, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -12,7 +14,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 const barColors = ['hsl(245, 58%, 61%)', 'hsl(200, 80%, 55%)', 'hsl(152, 60%, 45%)', 'hsl(38, 92%, 50%)'];
 
 export default function ResultsPage() {
-  const { language, results, setPage, addBooking, currentRequest } = useAppStore();
+  const { language, results, setPage, addBooking, currentRequest, bookings } = useAppStore();
+  const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
 
   if (results.length === 0) {
     return (
@@ -44,8 +47,8 @@ export default function ResultsPage() {
       status: 'confirmed',
     };
     addBooking(booking);
+    setConfirmedBooking(booking);
     toast.success(t('results.booked', language));
-    setPage('dashboard');
   };
 
   return (
@@ -165,6 +168,18 @@ export default function ResultsPage() {
           </motion.div>
         ))}
       </div>
+
+      {/* Booking Summary Card */}
+      {confirmedBooking && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <BookingSummaryCard booking={confirmedBooking} language={language} />
+          <div className="mt-4 flex justify-center">
+            <Button onClick={() => setPage('dashboard')} className="gradient-primary border-0">
+              ← Back to Dashboard
+            </Button>
+          </div>
+        </motion.div>
+      )}
     </motion.div>
   );
 }
