@@ -22,6 +22,19 @@ export const providers: Provider[] = [
   { id: 'home-4', name: 'Green Thumb Landscaping', category: 'home', address: '800 Divisadero St', city: 'San Francisco', zip: '94117', phone: '(415) 555-0404', rating: 4.7, distance: 2.9, availableSlots: [{ day: '2026-02-13', start: '07:00', end: '10:00' }] },
 ];
 
-export function getProvidersByCategory(category: string): Provider[] {
-  return providers.filter(p => p.category === category);
+export function getProvidersByCategory(category: string, location?: string): Provider[] {
+  let filtered = providers.filter(p => p.category === category);
+  if (location && location.trim()) {
+    const loc = location.trim().toLowerCase();
+    const locationMatched = filtered.filter(p =>
+      p.city.toLowerCase().includes(loc) ||
+      p.zip.includes(loc) ||
+      p.address.toLowerCase().includes(loc)
+    );
+    // If location matches some providers, use those; otherwise fall back to all in category
+    if (locationMatched.length > 0) {
+      filtered = locationMatched;
+    }
+  }
+  return filtered;
 }
