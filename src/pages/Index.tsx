@@ -10,16 +10,17 @@ interface IndexProps {
   signOut: () => Promise<void>;
   user: User;
   providerToken: string | null;
+  providerRefreshToken: string | null;
   isGoogleUser: boolean;
 }
 
-const Index = ({ signOut, user, providerToken, isGoogleUser }: IndexProps) => {
+const Index = ({ signOut, user, providerToken, providerRefreshToken, isGoogleUser }: IndexProps) => {
   const { currentPage } = useAppStore();
 
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard': return <DashboardPage />;
-      case 'new-request': return <NewRequestPage providerToken={providerToken} isGoogleUser={isGoogleUser} />;
+      case 'new-request': return <NewRequestPage providerToken={providerToken} providerRefreshToken={providerRefreshToken} isGoogleUser={isGoogleUser} />;
       case 'mission-control': return <MissionControlPage />;
       case 'results': return <ResultsPage />;
       default: return <DashboardPage />;

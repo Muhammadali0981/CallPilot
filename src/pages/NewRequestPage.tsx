@@ -89,10 +89,11 @@ function subtractBusyTimes(baseSlots: TimeSlot[], events: any[]): TimeSlot[] {
 
 interface NewRequestPageProps {
   providerToken: string | null;
+  providerRefreshToken: string | null;
   isGoogleUser: boolean;
 }
 
-export default function NewRequestPage({ providerToken, isGoogleUser }: NewRequestPageProps) {
+export default function NewRequestPage({ providerToken, providerRefreshToken, isGoogleUser }: NewRequestPageProps) {
   const { language, setPage, setCurrentRequest } = useAppStore();
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<Category>('medical');
@@ -314,6 +315,7 @@ export default function NewRequestPage({ providerToken, isGoogleUser }: NewReque
           {/* Google Calendar Sync */}
           <GoogleCalendarSync
             providerToken={providerToken}
+            providerRefreshToken={providerRefreshToken}
             isGoogleUser={isGoogleUser}
             onEventsLoaded={setCalendarEvents}
           />
