@@ -56,7 +56,7 @@ serve(async (req) => {
     // Combine category + location in the query for best results
     const combinedQuery = `${searchText} near ${location}`;
     const encoded = encodeURIComponent(combinedQuery);
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${MAPBOX_TOKEN}&limit=10`;
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${MAPBOX_TOKEN}&limit=15`;
     
     console.log(`Searching Mapbox for: ${combinedQuery}`);
 
